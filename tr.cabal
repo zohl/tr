@@ -19,15 +19,19 @@ executable tr
   build-depends: base >=4.8 && <5.0
                , aeson
                , bytestring
+               , cmdargs
                , containers
+               , data-default
                , dictionaries
                , directory
                , filepath
                , hsyslog
+               , ini
                , servant
                , servant-server
                , text
                , time
+               , unordered-containers
                , warp
                , warp-autoquit
                , warp-socket-activation

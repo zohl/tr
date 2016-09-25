@@ -1,6 +1,7 @@
-{ mkDerivation, aeson, base, bytestring, containers, dictionaries
-, directory, filepath, hsyslog, servant, servant-server, stdenv
-, text, time, warp, warp-autoquit, warp-socket-activation
+{ mkDerivation, aeson, base, bytestring, cmdargs, containers
+, dictionaries, directory, filepath, hsyslog, ini, servant
+, servant-server, stdenv, text, time, warp, warp-autoquit
+, warp-socket-activation
 }:
 mkDerivation {
   pname = "tr";
@@ -9,9 +10,9 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    aeson base bytestring containers dictionaries directory filepath
-    hsyslog servant servant-server text time warp warp-autoquit
-    warp-socket-activation
+    aeson base bytestring cmdargs containers dictionaries directory
+    filepath hsyslog ini servant servant-server text time warp
+    warp-autoquit warp-socket-activation
   ];
   license = stdenv.lib.licenses.bsd3;
 }
