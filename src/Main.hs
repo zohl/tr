@@ -20,6 +20,7 @@ import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes, fromJust)
 import Data.Proxy (Proxy(..))
 import Data.Text.Lazy (Text)
+import Data.List (intercalate)
 import Data.Time (formatTime, defaultTimeLocale)
 import Data.Typeable (Typeable)
 import NLP.Dictionary (Dictionary(..))
@@ -27,7 +28,7 @@ import NLP.Dictionary.StarDict (StarDict(..), IfoFile(..), Renderer, DataEntry(.
 import Network.Wai.Handler.Warp (runSettingsSocket, defaultSettings)
 import Network.Wai.Handler.Warp.AutoQuit (withAutoQuit, withHeartBeat, AutoQuitSettings(..))
 import Network.Wai.Handler.Warp.SocketActivation (withSocketActivation, SocketActivationSettings(..))
-import Servant (Application, Server, JSON, Get, Capture, (:>)(..), (:<|>)(..), serve)
+import Servant (Application, Server, Raw, JSON, Get, Capture, (:>)(..), (:<|>)(..), serve)
 import Servant (errBody, err404, throwError)
 import System.Console.CmdArgs (Data, cmdArgs, (&=), help, typ)
 import System.Directory (getCurrentDirectory, getDirectoryContents)
@@ -39,11 +40,19 @@ import qualified Data.HashMap.Strict as HMap
 import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
 import qualified NLP.Dictionary.StarDict as StarDict (mkDictionary)
-
+import Servant.HTML.Blaze (HTML)
+import Text.Blaze.Html5 ((!))
+import Text.Blaze.Html5 (Markup)
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
+import Servant.Utils.StaticFiles (serveDirectory)
+import System.Posix.Directory (getWorkingDirectory)
 
 data TrSettings = TrSettings {
     tsDictionariesPath :: FilePath
+  , tsStaticFilesPath  :: FilePath
   }
+
 
 data TrState = TrState {
     tsLock         :: MVar ()
@@ -69,19 +78,28 @@ instance ToJSON IfoFile where
     , "date"         .= (formatTime defaultTimeLocale ifoDateFormat <$> ifoDate)
     ]
 
-type TrAPI = "dictionary" :> Get '[JSON] [FilePath]
-        :<|> "dictionary" :> Capture "name" FilePath :> Get '[JSON] IfoFile
-        :<|> "dictionary" :> Capture "name" FilePath :> Capture "word" Text :> Get '[JSON] [Text]
 
-server :: TrSettings -> TrState -> Server TrAPI
-server (TrSettings {..}) (TrState {..}) = serveDictionaryList
-                                     :<|> serveDictionary
-                                     :<|> serveTranslation where
+type TemplateAPI = Get '[JSON] [String]
+              :<|> Capture "name" String :> Get '[HTML] Markup
+
+serveTemplateAPI :: Map String H.Html -> H.Html -> Server TemplateAPI
+serveTemplateAPI templates defaultPage = serveTemplateList :<|> serveTemplate where
+  serveTemplateList  = return $ Map.keys templates
+  serveTemplate name = return $ fromMaybe defaultPage (Map.lookup name templates)
+
+
+type DictionaryAPI = Get '[JSON] [FilePath]
+                :<|> Capture "name" FilePath :> Get '[JSON] IfoFile
+                :<|> Capture "name" FilePath :> Capture "word" Text :> Get '[JSON] [Text]
+
+serveDictionaryAPI :: TrSettings -> TrState -> Server DictionaryAPI
+serveDictionaryAPI (TrSettings {..}) (TrState {..}) = serveDictionaryList
+                                                 :<|> serveDictionary
+                                                 :<|> serveTranslation where
 
   serveDictionaryList        = liftIO $ getDictionariesList
   serveDictionary            = withDictionary (return . sdIfoFile)
   serveTranslation name word = withDictionary (liftIO . getEntries word) name
-
 
   getDictionariesList :: IO [FilePath]
   getDictionariesList = filter (not . flip elem [".", ".."])
@@ -107,6 +125,36 @@ server (TrSettings {..}) (TrState {..}) = serveDictionaryList
   withDictionary f name = liftIO (getDictionary name) >>= maybe (dictionaryNotFound name) f
 
 
+type TrAPI = Get '[HTML] Markup
+        :<|> "static" :> Raw
+        :<|> "api" :> "templates" :> TemplateAPI
+        :<|> "api" :> "dictionary" :> DictionaryAPI
+
+server :: TrSettings -> TrState -> Server TrAPI
+server settings state = return indexPage
+                   :<|> serveDirectory (tsStaticFilesPath settings)
+                   :<|> serveTemplateAPI templates defaultPage
+                   :<|> serveDictionaryAPI settings state where
+
+templates :: Map String H.Html
+templates = Map.fromList [
+    ("home", homePage)
+  ] where
+  homePage = "Hello"
+
+
+defaultPage :: H.Html
+defaultPage = "N/A"
+
+
+indexPage :: H.Html
+indexPage = H.docTypeHtml $ do
+  H.head $ do
+    H.script ! A.src "static/app.js" ! A.type_ "application/javascript;version=1.8" $ ""
+  H.body $ do
+    H.div ! A.class_ "app" $ "Loading..."
+
+
 app :: TrSettings -> TrState -> Application
 app settings state = serve (Proxy :: Proxy TrAPI) (server settings state)
 
@@ -117,13 +165,22 @@ data Tr = Tr {
   } deriving (Show, Data, Typeable)
 
 
+withEcho :: (SyslogFn -> IO a) -> (SyslogFn -> IO a)
+withEcho f = \syslog -> f $ \facility priority message -> do
+    syslog facility priority message
+    putStrLn . intercalate "::" $ [
+        show facility
+      , show priority
+      , BSC8.unpack message
+      ]
+
 main :: IO ()
 main = withSyslog SyslogConfig {
     identifier = "tr"
   , options = [PID, ODELAY]
   , defaultFacility = DAEMON
   , priorityMask = UpTo Debug
-  } $ \syslog -> (getArgs syslog) >>= maybe (return ()) (main' syslog) where
+  } $ withEcho $ \syslog -> (getArgs syslog) >>= maybe (return ()) (main' syslog) where
 
     getArgs :: SyslogFn -> IO (Maybe Tr)
     getArgs syslog = cmdArgs Tr {
@@ -169,9 +226,11 @@ main = withSyslog SyslogConfig {
         }
 
       dictionariesPath <- joinPath . (:[fromJust . dictionaries $ args]) <$> getCurrentDirectory
+      staticFilesPath <- getWorkingDirectory >>= \s -> return $ joinPath [s, "static"]
       let tsSettings = TrSettings {
           tsDictionariesPath = dictionariesPath
-      }
+        , tsStaticFilesPath = staticFilesPath
+        }
 
       state <- do
         tsLock         <- newMVar ()

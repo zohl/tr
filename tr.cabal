@@ -18,6 +18,8 @@ executable tr
   -- other-extensions:    
   build-depends: base >=4.8 && <5.0
                , aeson
+               , blaze-html
+               , blaze-markup
                , bytestring
                , cmdargs
                , containers
@@ -28,9 +30,11 @@ executable tr
                , hsyslog
                , ini
                , servant
+               , servant-blaze
                , servant-server
                , text
                , time
+               , unix
                , unordered-containers
                , warp
                , warp-autoquit
