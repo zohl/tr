@@ -9,7 +9,8 @@
 module Main where
 
 import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
-import Control.Exception.Base (bracket)
+import Control.Exception.Base (Exception, bracket)
+import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON(..), object, (.=))
@@ -30,7 +31,7 @@ import Network.Wai.Handler.Warp.AutoQuit (withAutoQuit, withHeartBeat, AutoQuitS
 import Network.Wai.Handler.Warp.SocketActivation (withSocketActivation, SocketActivationSettings(..))
 import Servant (Application, Server, Raw, JSON, Get, Capture, (:>)(..), (:<|>)(..), serve)
 import Servant (errBody, err404, throwError)
-import System.Console.CmdArgs (Data, cmdArgs, (&=), help, typ)
+import System.Console.CmdArgs (Data, cmdArgs, (&=), help, typ, name, explicit)
 import System.Directory (getCurrentDirectory, getDirectoryContents)
 import System.FilePath.Posix (joinPath, (<.>))
 import System.Posix.Syslog (SyslogFn, SyslogConfig(..), Facility(..), Priority(..), PriorityMask(..))
@@ -53,11 +54,15 @@ data TrSettings = TrSettings {
   , tsStaticFilesPath  :: FilePath
   }
 
-
 data TrState = TrState {
     tsLock         :: MVar ()
   , tsDictionaries :: IORef (Map FilePath StarDict)
   }
+
+data TrException = NoDictionariesPath
+  deriving (Eq, Show, Typeable)
+
+instance (Exception TrException)
 
 
 render :: Renderer
@@ -158,13 +163,6 @@ indexPage = H.docTypeHtml $ do
 app :: TrSettings -> TrState -> Application
 app settings state = serve (Proxy :: Proxy TrAPI) (server settings state)
 
-
-data Tr = Tr {
-    config       :: Maybe FilePath
-  , dictionaries :: Maybe FilePath
-  } deriving (Show, Data, Typeable)
-
-
 withEcho :: (SyslogFn -> IO a) -> (SyslogFn -> IO a)
 withEcho f = \syslog -> f $ \facility priority message -> do
     syslog facility priority message
@@ -174,45 +172,62 @@ withEcho f = \syslog -> f $ \facility priority message -> do
       , BSC8.unpack message
       ]
 
+data Tr = Tr {
+    configFile       :: Maybe FilePath
+  , dictionariesPath :: Maybe FilePath
+  } deriving (Show, Data, Typeable)
+
+
+getSettings :: SyslogFn -> IO TrSettings
+getSettings syslog = do
+  cmd <- cmdArgs Tr {
+      configFile = def
+        &= explicit &= name "config-file" &= name "c"
+        &= help "Configuration file"
+        &= typ "PATH"
+
+    , dictionariesPath = def
+        &= explicit &= name "dictionaries-path" &= name "d"
+        &= help "Directory with dictionaries to serve"
+        &= typ "PATH"
+    }
+
+  let emptyIni = Ini . HMap.fromList $ []
+  ini <- ($ (configFile cmd)) $ maybe
+    (return emptyIni)
+    (\fn -> readIniFile fn >>= either
+      (\err -> do
+         syslog DAEMON Error (BSC8.pack $ "Cannot parse ini file: " ++ err)
+         return emptyIni)
+      (return))
+  let fromIni section name = HMap.lookup section (unIni ini) >>= HMap.lookup name
+
+  defStaticFilesPath <- getWorkingDirectory >>= return . joinPath . (:["static"])
+
+  tsDictionariesPath <- fromMaybe (throwM NoDictionariesPath)
+    . fmap return . listToMaybe . catMaybes $ [
+        T.unpack <$> fromIni "DICTIONARIES" "path"
+      , dictionariesPath cmd
+      ]
+
+  tsStaticFilesPath <- return $ fromMaybe defStaticFilesPath
+    . listToMaybe . catMaybes $ [
+          T.unpack <$> fromIni "GLOBAL" "static_files"
+        ]
+
+  return $ TrSettings {..}
+
+
 main :: IO ()
 main = withSyslog SyslogConfig {
     identifier = "tr"
   , options = [PID, ODELAY]
   , defaultFacility = DAEMON
   , priorityMask = UpTo Debug
-  } $ withEcho $ \syslog -> (getArgs syslog) >>= maybe (return ()) (main' syslog) where
+  } $ withEcho $ \syslog -> getSettings syslog >>= main' syslog where
 
-    getArgs :: SyslogFn -> IO (Maybe Tr)
-    getArgs syslog = cmdArgs Tr {
-        config       = def &= help "Configuration file"                   &= typ "PATH"
-      , dictionaries = def &= help "Directory with dictionaries to serve" &= typ "PATH"
-      } >>= updateFromConfig >>= maybe (return Nothing) check where
-
-        updateFromConfig :: Tr -> IO (Maybe Tr)
-        updateFromConfig args = case (config args) of
-          Nothing -> return . Just $ args
-          Just fn -> (readIniFile fn) >>= either
-            (\err -> do
-                syslog DAEMON Error (BSC8.pack $ "Cannot parse ini file: " ++ err)
-                return Nothing)
-
-            (\ini -> return . Just $ args {
-                dictionaries = listToMaybe . catMaybes $ [
-                    T.unpack <$> (HMap.lookup "General" (unIni ini) >>= HMap.lookup "Dictionaries")
-                  , (dictionaries args)
-                  ]
-              })
-
-        check :: Tr -> IO (Maybe Tr)
-        check args = case (dictionaries args) of
-          Nothing -> do
-            syslog DAEMON Error "No dictionaries directory was specified"
-            return Nothing
-          _       -> return . Just $ args
-
-
-    main' :: SyslogFn -> Tr -> IO ()
-    main' syslog args = do
+    main' :: SyslogFn -> TrSettings -> IO ()
+    main' syslog tsSettings = do
       syslog DAEMON Notice "Started"
 
       let saSettings = SocketActivationSettings {
@@ -223,13 +238,6 @@ main = withSyslog SyslogConfig {
       let aqSettings = AutoQuitSettings {
           aqsTimeout = fromIntegral (10 :: Integer)
         , aqsOnExit = syslog DAEMON Notice "Staying inactive for a long time"
-        }
-
-      dictionariesPath <- joinPath . (:[fromJust . dictionaries $ args]) <$> getCurrentDirectory
-      staticFilesPath <- getWorkingDirectory >>= \s -> return $ joinPath [s, "static"]
-      let tsSettings = TrSettings {
-          tsDictionariesPath = dictionariesPath
-        , tsStaticFilesPath = staticFilesPath
         }
 
       state <- do
@@ -243,3 +251,4 @@ main = withSyslog SyslogConfig {
              withHeartBeat chan $ app tsSettings state
 
       syslog DAEMON Notice "Exiting"
+

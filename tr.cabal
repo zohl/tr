@@ -26,6 +26,7 @@ executable tr
                , data-default
                , dictionaries
                , directory
+               , exceptions
                , filepath
                , hsyslog
                , ini
