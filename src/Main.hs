@@ -48,21 +48,8 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Servant.Utils.StaticFiles (serveDirectory)
 import System.Posix.Directory (getWorkingDirectory)
-
-data TrSettings = TrSettings {
-    tsDictionariesPath :: FilePath
-  , tsStaticFilesPath  :: FilePath
-  }
-
-data TrState = TrState {
-    tsLock         :: MVar ()
-  , tsDictionaries :: IORef (Map FilePath StarDict)
-  }
-
-data TrException = NoDictionariesPath
-  deriving (Eq, Show, Typeable)
-
-instance (Exception TrException)
+import Common (TrSettings(..), TrException(..))
+import Settings (getSettings)
 
 
 render :: Renderer
@@ -82,6 +69,12 @@ instance ToJSON IfoFile where
     , "description"  .= ifoDescription
     , "date"         .= (formatTime defaultTimeLocale ifoDateFormat <$> ifoDate)
     ]
+
+
+data TrState = TrState {
+    tsLock         :: MVar ()
+  , tsDictionaries :: IORef (Map FilePath StarDict)
+  }
 
 
 type TemplateAPI = Get '[JSON] [String]
@@ -137,7 +130,7 @@ type TrAPI = Get '[HTML] Markup
 
 server :: TrSettings -> TrState -> Server TrAPI
 server settings state = return indexPage
-                   :<|> serveDirectory (tsStaticFilesPath settings)
+                   :<|> serveDirectory ("./static")
                    :<|> serveTemplateAPI templates defaultPage
                    :<|> serveDictionaryAPI settings state where
 
@@ -171,52 +164,6 @@ withEcho f = \syslog -> f $ \facility priority message -> do
       , show priority
       , BSC8.unpack message
       ]
-
-data Tr = Tr {
-    configFile       :: Maybe FilePath
-  , dictionariesPath :: Maybe FilePath
-  } deriving (Show, Data, Typeable)
-
-
-getSettings :: SyslogFn -> IO TrSettings
-getSettings syslog = do
-  cmd <- cmdArgs Tr {
-      configFile = def
-        &= explicit &= name "config-file" &= name "c"
-        &= help "Configuration file"
-        &= typ "PATH"
-
-    , dictionariesPath = def
-        &= explicit &= name "dictionaries-path" &= name "d"
-        &= help "Directory with dictionaries to serve"
-        &= typ "PATH"
-    }
-
-  let emptyIni = Ini . HMap.fromList $ []
-  ini <- ($ (configFile cmd)) $ maybe
-    (return emptyIni)
-    (\fn -> readIniFile fn >>= either
-      (\err -> do
-         syslog DAEMON Error (BSC8.pack $ "Cannot parse ini file: " ++ err)
-         return emptyIni)
-      (return))
-  let fromIni section name = HMap.lookup section (unIni ini) >>= HMap.lookup name
-
-  defStaticFilesPath <- getWorkingDirectory >>= return . joinPath . (:["static"])
-
-  tsDictionariesPath <- fromMaybe (throwM NoDictionariesPath)
-    . fmap return . listToMaybe . catMaybes $ [
-        T.unpack <$> fromIni "DICTIONARIES" "path"
-      , dictionariesPath cmd
-      ]
-
-  tsStaticFilesPath <- return $ fromMaybe defStaticFilesPath
-    . listToMaybe . catMaybes $ [
-          T.unpack <$> fromIni "GLOBAL" "static_files"
-        ]
-
-  return $ TrSettings {..}
-
 
 main :: IO ()
 main = withSyslog SyslogConfig {
