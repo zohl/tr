@@ -17,7 +17,7 @@ import Data.Default (Default(..))
 import Data.Ini (Ini(..), readIniFile)
 import Data.Maybe (fromMaybe, listToMaybe, catMaybes)
 import Data.Typeable (Typeable)
-import System.Console.CmdArgs (Data, cmdArgs, (&=), help, name, explicit, typFile, typDir)
+import System.Console.CmdArgs (Data, cmdArgs, (&=), help, name, explicit, typFile, typDir, program)
 import System.Posix.Syslog (SyslogFn, Facility(..), Priority(..))
 import qualified Data.ByteString.Char8 as BSC8
 import qualified Data.HashMap.Strict as HMap
@@ -44,10 +44,12 @@ readIniFileM syslog fn = readIniFile fn >>= either
       return Nothing)
   (return . Just)
 
+getValueM :: (Monad m) => m a -> [Maybe a] -> m a
+getValueM mx mxs = fromMaybe mx (fmap return . listToMaybe . catMaybes $ mxs)
 
 getSettings :: SyslogFn -> IO TrSettings
 getSettings syslog = do
-  (CmdArgs {..}) <- cmdArgs CmdArgs {
+  (CmdArgs {..}) <- cmdArgs $ CmdArgs {
         cmdConfigFile = def
           &= explicit &= name "config-file" &= name "c"
           &= help "Configuration file"
@@ -57,7 +59,7 @@ getSettings syslog = do
           &= explicit &= name "dictionaries" &= name "d"
           &= help "Directory with dictionaries"
           &= typDir
-      }
+      } &= program "tr"
 
   (IniArgs {..}) <- case cmdConfigFile of
       Nothing -> return def
@@ -69,11 +71,12 @@ getSettings syslog = do
           fromIni :: T.Text -> T.Text -> Maybe String
           fromIni section key = T.unpack <$> (HMap.lookup section (unIni d) >>= HMap.lookup key)
 
-  dictionariesPath' <- throwM NoDictionariesPath
+  dictionariesPath' <- getValueM (throwM NoDictionariesPath) [
+      iniDictionariesPath
+    , cmdDictionariesPath
+    ]
 
   return TrSettings {
-      tsDictionariesPath = getValue dictionariesPath' [iniDictionariesPath, cmdDictionariesPath]
+      tsDictionariesPath = dictionariesPath'
     } where
-    getValue :: a -> [Maybe a] -> a
-    getValue x mxs = fromMaybe x (listToMaybe . catMaybes $ mxs)
 

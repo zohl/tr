@@ -167,14 +167,14 @@ main = withSyslog SyslogConfig {
     main' :: SyslogFn -> TrSettings -> IO ()
     main' syslog tsSettings = do
       syslog DAEMON Notice "Started"
-
+      putStrLn $ tsDictionariesPath tsSettings
       let saSettings = SocketActivationSettings {
           sasPort = Just 8080
         , sasHostPreference = "*4"
         }
 
       let aqSettings = AutoQuitSettings {
-          aqsTimeout = fromIntegral (10 :: Integer)
+          aqsTimeout = fromIntegral (120 :: Integer)
         , aqsOnExit = syslog DAEMON Notice "Staying inactive for a long time"
         }
 
