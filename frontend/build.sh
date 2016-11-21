@@ -4,5 +4,6 @@ ENTRY_JS=app.js
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
-cp ./src/index.html "$BUILD_DIR"
-webpack
+cp ./src/*.tag "$BUILD_DIR"
+cp ./src/*.js "$BUILD_DIR"
+# webpack

@@ -14,7 +14,6 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON(..), object, (.=))
 import Data.IORef (IORef, newIORef, readIORef, modifyIORef')
 import Data.Map.Strict (Map)
-import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
 import Data.Text.Lazy (Text)
 import Data.List (intercalate)
@@ -68,15 +67,6 @@ data TrState = TrState {
   }
 
 
-type TemplateAPI = Get '[JSON] [String]
-              :<|> Capture "name" String :> Get '[HTML] Markup
-
-serveTemplateAPI :: Map String H.Html -> H.Html -> Server TemplateAPI
-serveTemplateAPI tmpls defPage = serveTemplateList :<|> serveTemplate where
-  serveTemplateList  = return $ Map.keys templates
-  serveTemplate name = return $ fromMaybe defPage (Map.lookup name tmpls)
-
-
 type DictionaryAPI = Get '[JSON] [FilePath]
                 :<|> Capture "name" FilePath :> Get '[JSON] IfoFile
                 :<|> Capture "name" FilePath :> Capture "word" Text :> Get '[JSON] [Text]
@@ -116,32 +106,24 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..}) = serveDictionaryList
 
 type TrAPI = Get '[HTML] Markup
         :<|> "static" :> Raw
-        :<|> "api" :> "templates" :> TemplateAPI
         :<|> "api" :> "dictionary" :> DictionaryAPI
 
 server :: TrSettings -> TrState -> Server TrAPI
 server settings state = return indexPage
-                   :<|> serveDirectory ("./static")
-                   :<|> serveTemplateAPI templates defaultPage
+                   :<|> serveDirectory ("frontend/static")
                    :<|> serveDictionaryAPI settings state where
 
-templates :: Map String H.Html
-templates = Map.fromList [
-    ("home", homePage)
-  ] where
-  homePage = "Hello"
-
-
-defaultPage :: H.Html
-defaultPage = "N/A"
-
-
 indexPage :: H.Html
-indexPage = H.docTypeHtml $ do
+indexPage = let
+    srcRiotJS = "https://rawgit.com/riot/riot/master/riot+compiler.min.js"
+  in H.docTypeHtml $ do
   H.head $ do
-    H.script ! A.src "static/app.js" ! A.type_ "application/javascript;version=1.8" $ ""
+    H.link ! A.rel "stylesheet" ! A.href "style.css"
   H.body $ do
     H.div ! A.class_ "app" $ "Loading..."
+    H.script ! A.src "/static/app.tag" ! A.type_ "riot/tag" $ ""
+    H.script ! A.src srcRiotJS ! A.type_ "riot/tag" $ ""
+    H.script $ "riot.mount('app', {start: 0})"
 
 
 app :: TrSettings -> TrState -> Application
