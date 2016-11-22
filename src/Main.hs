@@ -110,7 +110,7 @@ type TrAPI = Get '[HTML] Markup
 
 server :: TrSettings -> TrState -> Server TrAPI
 server settings state = return indexPage
-                   :<|> serveDirectory ("frontend/static")
+                   :<|> serveDirectory "frontend/static"
                    :<|> serveDictionaryAPI settings state where
 
 indexPage :: H.Html
@@ -120,10 +120,10 @@ indexPage = let
   H.head $ do
     H.link ! A.rel "stylesheet" ! A.href "style.css"
   H.body $ do
-    H.div ! A.class_ "app" $ "Loading..."
+    H.preEscapedText "<app>Loading...</app>"
     H.script ! A.src "/static/app.tag" ! A.type_ "riot/tag" $ ""
-    H.script ! A.src srcRiotJS ! A.type_ "riot/tag" $ ""
-    H.script $ "riot.mount('app', {start: 0})"
+    H.script ! A.src srcRiotJS $ ""
+    H.script $ "riot.mount('app')"
 
 
 app :: TrSettings -> TrState -> Application
@@ -156,7 +156,7 @@ main = withSyslog SyslogConfig {
         }
 
       let aqSettings = AutoQuitSettings {
-          aqsTimeout = fromIntegral (120 :: Integer)
+          aqsTimeout = fromIntegral (1200 :: Integer)
         , aqsOnExit = syslog DAEMON Notice "Staying inactive for a long time"
         }
 
