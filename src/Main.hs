@@ -118,7 +118,7 @@ indexPage = let
     srcRiotJS = "https://rawgit.com/riot/riot/master/riot+compiler.min.js"
   in H.docTypeHtml $ do
   H.head $ do
-    H.link ! A.rel "stylesheet" ! A.href "style.css"
+    H.link ! A.rel "stylesheet" ! A.href "/static/style.css"
   H.body $ do
     H.preEscapedText "<app>Loading...</app>"
     H.script ! A.src "/static/app.tag" ! A.type_ "riot/tag" $ ""
