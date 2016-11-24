@@ -29,7 +29,7 @@
     <div class = "translation" each = {translations}>
       <h3>{name}</h3>
       <div class = "entry" each = {entry in entries}>
-        <p>{entry}</p>
+        <raw content = "{entry}"/>
         <hr/>
       </div>
     </div>

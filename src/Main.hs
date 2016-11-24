@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main where
@@ -32,14 +33,21 @@ import System.Posix.Syslog (Option(..), withSyslog)
 import qualified Data.ByteString.Char8 as BSC8
 import qualified Data.Map.Strict as Map
 import qualified NLP.Dictionary.StarDict as StarDict (mkDictionary)
-import Servant.HTML.Blaze (HTML)
-import Text.Blaze.Html5 ((!))
-import Text.Blaze.Html5 (Markup)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
 import Servant.Utils.StaticFiles (serveDirectory)
 import Common (TrSettings(..))
 import Settings (getSettings)
+import qualified Data.ByteString.Lazy as BSL
+import Data.Typeable (Typeable)
+import qualified Network.HTTP.Media as M
+import Servant.API (Accept (..), MimeRender (..))
+
+data HTML deriving Typeable
+
+instance Accept HTML where
+  contentType _ = "text" M.// "html" M./: ("charset", "utf-8")
+
+instance MimeRender HTML BSL.ByteString where
+  mimeRender _ = id
 
 
 render :: Renderer
@@ -104,30 +112,18 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..}) = serveDictionaryList
   withDictionary f name = liftIO (getDictionary name) >>= maybe (dictionaryNotFound name) f
 
 
-type TrAPI = Get '[HTML] Markup
+type TrAPI = Get '[HTML] BSL.ByteString
         :<|> "static" :> Raw
         :<|> "api" :> "dictionary" :> DictionaryAPI
 
-server :: TrSettings -> TrState -> Server TrAPI
-server settings state = return indexPage
-                   :<|> serveDirectory "frontend/static"
-                   :<|> serveDictionaryAPI settings state where
+server :: TrSettings -> TrState -> BSL.ByteString -> Server TrAPI
+server settings state indexPage
+     = return indexPage
+  :<|> serveDirectory "frontend/static"
+  :<|> serveDictionaryAPI settings state where
 
-indexPage :: H.Html
-indexPage = let
-    srcRiotJS = "https://rawgit.com/riot/riot/master/riot+compiler.min.js"
-  in H.docTypeHtml $ do
-  H.head $ do
-    H.link ! A.rel "stylesheet" ! A.href "/static/style.css"
-  H.body $ do
-    H.preEscapedText "<app>Loading...</app>"
-    H.script ! A.src "/static/app.tag" ! A.type_ "riot/tag" $ ""
-    H.script ! A.src srcRiotJS $ ""
-    H.script $ "riot.mount('app')"
-
-
-app :: TrSettings -> TrState -> Application
-app settings state = serve (Proxy :: Proxy TrAPI) (server settings state)
+app :: TrSettings -> TrState -> BSL.ByteString -> Application
+app settings state indexPage = serve (Proxy :: Proxy TrAPI) (server settings state indexPage)
 
 withEcho :: (SyslogFn -> IO a) -> (SyslogFn -> IO a)
 withEcho f = \syslog -> f $ \facility priority message -> do
@@ -165,10 +161,12 @@ main = withSyslog SyslogConfig {
         tsDictionaries <- newIORef Map.empty
         return TrState {..}
 
+      indexPage <- BSL.readFile "frontend/static/index.html"
+
       withSocketActivation saSettings $
         \sock -> withAutoQuit aqSettings $
           \chan -> runSettingsSocket defaultSettings sock $
-             withHeartBeat chan $ app tsSettings state
+             withHeartBeat chan $ app tsSettings state indexPage
 
       syslog DAEMON Notice "Exiting"
 
