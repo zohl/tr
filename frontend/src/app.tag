@@ -5,77 +5,103 @@
            oninput = {onChangeQuery}
     />
   </form>
+
   <div>
     <label class = "dictionary" each = {dictionaries}>
         <input type = "checkbox"
                name = {name}
                onclick = {onChangeDictionary}
         />
-        <p>{name}<p>
-        <!-- <p>{version}</p>          -->
-        <!-- <p>{bookName}</p>         -->
-        <!-- <p>{wordCount}</p>        -->
-        <!-- <p>{synWordCount}</p>     -->
-        <!-- <p>{author}</p>           -->
-        <!-- <p>{email}</p>            -->
-        <!-- <p>{website}</p>          -->
-        <!-- <p>{description}</p>      -->
-        <!-- <p>{date}</p>             -->
-        <p>{enabled}</p>
+        <p>{name} ({info.version})<p>
+        <!-- <p>{info.bookName}</p>         -->
+        <!-- <p>{info.wordCount}</p>        -->
+        <!-- <p>{info.synWordCount}</p>     -->
+        <!-- <p>{info.author}</p>           -->
+        <!-- <p>{info.email}</p>            -->
+        <!-- <p>{info.website}</p>          -->
+        <!-- <p>{info.date}</p>             -->
+        <!-- <p>{info.description}</p>      -->
     </label>
   </div>
 
   <div>
-    <div class = "translation" each = {translations}>
-      <h3>{name}</h3>
-      <div class = "entry" each = {entry in entries}>
-        <raw content = "{entry}"/>
-        <hr/>
+    <virtual each = {dictionaries}>
+      <div if = {state == DICT_ENABLED && entries.length > 0} class = "translation">
+        <h3>{name}</h3>
+        <div class = "entry" each = {entry in entries}>
+          <raw content = "{entry}"/>
+          <hr/>
+        </div>
       </div>
-    </div>
+    </virtual>
   </div>
 
   <script>
+    this.DICT_DISABLED = 0;
+    this.DICT_ENABLED  = 1;
+    this.DICT_PENDING  = 2;
+
     this.query = "";
     this.dictionaries = [];
-    this.translations = [];
 
-    this.updateTranslations = () => {
-      this.translations = [];
-      this.dictionaries.forEach(d => {
-        if (d.enabled) {
-          fetch('/api/dictionary/'+d.name+'/'+this.query).then(r => r.json().then(data => {
-            if (data.length > 0) {
-              this.translations.push({name: d.name, entries: data});
-              this.update();
+    fetch('/api/dictionary').then(r => r.json().then(data => {
+      data.forEach(name => {
+        fetch(`/api/dictionary/${name}`).then(r => r.json().then(info => {
+          this.dictionaries.push({
+              name: name
+            , state: this.DICT_DISABLED
+            , info: info
+            , entries: []
+            , reqCount: 0
+          });
+          this.update();
+        }));
+      });
+    }));
+
+
+    this.updateEntries = dictionary => {
+      ++dictionary.reqCount;
+
+      var done = entries => {
+        dictionary.entries = entries;
+        dictionary.state = this.DICT_ENABLED;
+        this.update();
+      };
+
+      if (dictionary.state != this.DICT_DISABLED) {
+        if (this.query.length == 0) {
+          done([]);
+        }
+        else {
+          let url = `/api/dictionary/${dictionary.name}/${this.query}`;
+          let reqCount = dictionary.reqCount;
+
+          fetch(url).then(r => r.json().then(entries => {
+            if (dictionary.reqCount == reqCount) {
+              done(entries);
             }
           }));
         }
-      });
-    }
+      }
+      else {
+        this.update();
+      }
+    };
 
     onChangeQuery(e) {
       this.query = e.currentTarget.value;
-      this.updateTranslations();
+      this.dictionaries.forEach(this.updateEntries);
     };
 
     onChangeDictionary(e) {
       this.dictionaries.forEach(d => {
         if (d.name == e.currentTarget.name) {
-          d.enabled = e.currentTarget.checked;
-          this.updateTranslations();
+          d.state = (e.currentTarget.checked) ? this.DICT_PENDING : this.DICT_DISABLED;
+          this.updateEntries(d);
         }
       });
     };
-
-    fetch('/api/dictionary').then(r => r.json().then(data => {
-      data.forEach(name => {
-        fetch('/api/dictionary/' + name).then(response => response.json().then(info => {
-          this.dictionaries.push(Object.assign(info, {name: name, enabled: false}));
-          this.update();
-        }));
-      });
-    }));
 
   </script>
 
