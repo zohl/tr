@@ -26,6 +26,9 @@
 
   <div>
     <virtual each = {dictionaries}>
+      <div if = {state == DICT_PENDING} class = "translation">
+        ...loading...
+      </div>
       <div if = {state == DICT_ENABLED && entries.length > 0} class = "translation">
         <h3>{name}</h3>
         <div class = "entry" each = {entry in entries}>
@@ -62,6 +65,7 @@
 
     this.updateEntries = dictionary => {
       ++dictionary.reqCount;
+      dictionary.state = this.DICT_PENDING;
 
       var done = entries => {
         dictionary.entries = entries;
@@ -69,36 +73,40 @@
         this.update();
       };
 
-      if (dictionary.state != this.DICT_DISABLED) {
-        if (this.query.length == 0) {
-          done([]);
-        }
-        else {
-          let url = `/api/dictionary/${dictionary.name}/${this.query}`;
-          let reqCount = dictionary.reqCount;
-
-          fetch(url).then(r => r.json().then(entries => {
-            if (dictionary.reqCount == reqCount) {
-              done(entries);
-            }
-          }));
-        }
+      if (this.query.length == 0) {
+        done([]);
       }
       else {
-        this.update();
+        let url = `/api/dictionary/${dictionary.name}/${this.query}`;
+        let reqCount = dictionary.reqCount;
+
+        fetch(url).then(r => r.json().then(entries => {
+          if (dictionary.reqCount == reqCount && dictionary.state != this.DICT_DISABLED) {
+            done(entries);
+          }
+        }));
       }
     };
 
     onChangeQuery(e) {
       this.query = e.currentTarget.value;
-      this.dictionaries.forEach(this.updateEntries);
+      this.dictionaries.forEach(d => {
+        if (d.state != this.DICT_DISABLED) {
+          this.updateEntries(d);
+        }
+      });
+      this.update();
     };
 
     onChangeDictionary(e) {
       this.dictionaries.forEach(d => {
         if (d.name == e.currentTarget.name) {
-          d.state = (e.currentTarget.checked) ? this.DICT_PENDING : this.DICT_DISABLED;
-          this.updateEntries(d);
+          if (e.currentTarget.checked) {
+            this.updateEntries(d);
+          }
+          else {
+            d.state = this.DICT_DISABLED;
+          }
         }
       });
     };
