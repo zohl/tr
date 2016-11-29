@@ -1,42 +1,56 @@
 <app>
-  <form class = "search">
-    <input type = "input"
-           placeholder = "Enter a word to translate"
-           oninput = {onChangeQuery}
-    />
-  </form>
+  <div class = "container">
 
-  <div>
-    <label class = "dictionary" each = {dictionaries}>
-        <input type = "checkbox"
-               name = {name}
-               onclick = {onChangeDictionary}
-        />
-        <p>{name} ({info.version})<p>
-        <!-- <p>{info.bookName}</p>         -->
-        <!-- <p>{info.wordCount}</p>        -->
-        <!-- <p>{info.synWordCount}</p>     -->
-        <!-- <p>{info.author}</p>           -->
-        <!-- <p>{info.email}</p>            -->
-        <!-- <p>{info.website}</p>          -->
-        <!-- <p>{info.date}</p>             -->
-        <!-- <p>{info.description}</p>      -->
-    </label>
-  </div>
+    <form class = "search">
+      <input type = "input"
+             placeholder = "_"
+             oninput = {onChangeQuery}
+      />
+    </form>
 
-  <div>
-    <virtual each = {dictionaries}>
-      <div if = {state == DICT_PENDING} class = "translation">
-        ...loading...
+    <div class = "dictionaries">
+      <div class = "dictionary" each = {dictionaries}>
+        <label class = "control">
+          <input type = "checkbox"
+                 name = {name}
+                 onclick = {onChangeDictionary}
+          />
+          <div class = "contents">
+            <p>{name}&nbsp;({info.version})<p>
+          </div>
+        </label>
+        <!--
+        <label class = "info">
+          <input type = "checkbox"/>
+          <div class = "contents">
+            <p>{info.bookName}</p>
+            <p>{info.wordCount}</p>
+            <p>{info.synWordCount}</p>
+            <p>{info.author}</p>
+            <p>{info.email}</p>
+            <p>{info.website}</p>
+            <p>{info.date}</p>
+            <p>{info.description}</p>
+          </div>
+        </label>
+        -->
       </div>
-      <div if = {state == DICT_ENABLED && entries.length > 0} class = "translation">
-        <h3>{name}</h3>
-        <div class = "entry" each = {entry in entries}>
-          <raw content = "{entry}"/>
-          <hr/>
+    </div>
+
+    <div class = "translations">
+      <virtual each = {dictionaries}>
+        <div if = {state == DICT_PENDING} class = "translation">
+          ...loading...
         </div>
-      </div>
-    </virtual>
+        <div if = {state == DICT_ENABLED && entries.length > 0} class = "translation">
+          <h3>{name}</h3>
+          <div class = "entry" each = {entry in entries}>
+            <raw content = "{entry}"/>
+            <hr/>
+          </div>
+        </div>
+      </virtual>
+    </div>
   </div>
 
   <script>
