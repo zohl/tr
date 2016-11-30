@@ -2,38 +2,33 @@
   <div class = "container">
 
     <form class = "search">
-      <input type = "input"
-             placeholder = "_"
-             oninput = {onChangeQuery}
-      />
+      <input type = "input" placeholder = "_" oninput = {onChangeQuery}/>
     </form>
 
     <div class = "dictionaries">
       <div class = "dictionary" each = {dictionaries}>
-        <label class = "control">
-          <input type = "checkbox"
-                 name = {name}
-                 onclick = {onChangeDictionary}
-          />
-          <div class = "contents">
-            <p>{name}&nbsp;({info.version})<p>
-          </div>
-        </label>
-        <!--
-        <label class = "info">
-          <input type = "checkbox"/>
-          <div class = "contents">
-            <p>{info.bookName}</p>
-            <p>{info.wordCount}</p>
-            <p>{info.synWordCount}</p>
-            <p>{info.author}</p>
-            <p>{info.email}</p>
-            <p>{info.website}</p>
-            <p>{info.date}</p>
-            <p>{info.description}</p>
-          </div>
-        </label>
-        -->
+        <div class = "header">
+          <label class = "control-enable">
+            <input type = "checkbox" name = {name} onclick = {onChangeDictionary}/>
+            <div class = "widget"/>
+            <div class = "name">{name}&nbsp;({info.version})</div>
+          </label>
+          <label class = "control-info">
+            <input type = "checkbox" ref = "{name}"/>
+            <div class = "widget"/>
+          </label>
+        </div>
+
+        <div class = "info">
+          <p>{info.bookName}</p>
+          <p>{info.wordCount}</p>
+          <p>{info.synWordCount}</p>
+          <p>{info.author}</p>
+          <p>{info.email}</p>
+          <p>{info.website}</p>
+          <p>{info.date}</p>
+          <p>{info.description}</p>
+        </div>
       </div>
     </div>
 

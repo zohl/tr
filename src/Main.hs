@@ -15,6 +15,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON(..), object, (.=))
 import Data.IORef (IORef, newIORef, readIORef, modifyIORef')
 import Data.Map.Strict (Map)
+import Data.Monoid((<>))
 import Data.Proxy (Proxy(..))
 import Data.Text.Lazy (Text)
 import Data.List (intercalate)
@@ -51,7 +52,7 @@ instance MimeRender HTML BSL.ByteString where
 
 
 render :: Renderer
-render (UTF8Text s) = s
+render (UTF8Text s) = "<pre>" <> s <> "</pre>"
 render (XDXF s) = s
 render _ = error "not supported"
 

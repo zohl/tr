@@ -2,12 +2,12 @@
 .toggler(@content-off, @content-on) {
   input {
     display: none;
-    &:checked + .contents::before {
+    &:checked + .widget::before {
       content: @content-on;
     }
   }
 
-  .contents {
+  .widget{
     &::before {
       content: @content-off;
     }
@@ -16,16 +16,12 @@
 
 .checkbox {
   .toggler('[ ]'; '[X]');
-  .contents::before {
+  .widget::before {
+    display: block;
     float: left;
     margin-right: 1ch;
-
-    &::before {
-      display: block;
-    }
   }
 }
-
 
 // structure
 p {
@@ -57,14 +53,22 @@ app {
 
 .dictionaries {
   .dictionary {
-    display: block;
 
-    .control {
-      .checkbox();
-      .contents {
-        text-align: left;
-        padding-left: 1ch;
+    display: block;
+    text-align: left;
+
+    .header .control {
+      &-enable {
+        .checkbox();
       }
+
+      &-info {
+        float: right;
+        .toggler('(+)'; '(-)');
+      }
+    }
+    .name {
+      display: inline;
     }
   }
 }
