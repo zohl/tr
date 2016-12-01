@@ -11,23 +11,22 @@
           <label class = "control-enable">
             <input type = "checkbox" name = {name} onclick = {onChangeDictionary}/>
             <div class = "widget"/>
-            <div class = "name">{name}&nbsp;({info.version})</div>
+            <div class = "contents">{name}&nbsp;({info.version})</div>
           </label>
           <label class = "control-info">
-            <input type = "checkbox" ref = "{name}"/>
+            <input type = "checkbox"/>
             <div class = "widget"/>
+            <div class = "contents">
+              <p>{info.bookName}</p>
+              <p>{info.wordCount}</p>
+              <p>{info.synWordCount}</p>
+              <p>{info.author}</p>
+              <p>{info.email}</p>
+              <p>{info.website}</p>
+              <p>{info.date}</p>
+              <p>{info.description}</p>
+            </div>
           </label>
-        </div>
-
-        <div class = "info">
-          <p>{info.bookName}</p>
-          <p>{info.wordCount}</p>
-          <p>{info.synWordCount}</p>
-          <p>{info.author}</p>
-          <p>{info.email}</p>
-          <p>{info.website}</p>
-          <p>{info.date}</p>
-          <p>{info.description}</p>
         </div>
       </div>
     </div>

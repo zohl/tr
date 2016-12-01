@@ -57,18 +57,36 @@ app {
     display: block;
     text-align: left;
 
-    .header .control {
-      &-enable {
-        .checkbox();
-      }
+    .header {
+       position: relative;
 
-      &-info {
-        float: right;
-        .toggler('(+)'; '(-)');
+      .control {
+        &-enable {
+          .checkbox();
+
+          .contents {
+            display: inline;
+          }
+        }
+
+        &-info {
+          float: right;
+          .toggler('(+)'; '(-)');
+
+          .contents {
+            display: none;
+            position: absolute;
+            right: 4ch;
+            padding-left: 1ch;
+            padding-right: 1ch;
+            padding-top: 1em;
+            padding-bottom: 1em;
+          }
+          input:checked ~ .contents {
+            display: block;
+          }
+        }
       }
-    }
-    .name {
-      display: inline;
     }
   }
 }
@@ -90,6 +108,9 @@ app {
 @widget-bg: #D8D8D8;
 @widget-fg: #222222;
 
+@popup-bg: #EEEEEE;
+@popup-fg: #222222;
+
 body {
   background: @body-bg;
   color: @body-fg;
@@ -103,3 +124,7 @@ input, .dictionary {
   font-family: monospace;
 }
 
+.dictionaries .dictionary .control-info .contents {
+  background: @popup-bg;
+  color: @popup-fg;
+}
