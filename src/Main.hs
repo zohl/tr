@@ -153,7 +153,7 @@ main = withSyslog SyslogConfig {
         }
 
       let aqSettings = AutoQuitSettings {
-          aqsTimeout = fromIntegral (1200 :: Integer)
+          aqsTimeout = Just $ fromIntegral (1200 :: Integer)
         , aqsOnExit = syslog DAEMON Notice "Staying inactive for a long time"
         }
 
