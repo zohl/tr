@@ -29,7 +29,7 @@ import Network.Wai.Handler.Warp.AutoQuit (withAutoQuit, withHeartBeat, AutoQuitS
 import Network.Wai.Handler.Warp.SocketActivation (withSocketActivation, SocketActivationSettings(..))
 import Servant (Application, Server, Raw, JSON, Get, Capture, (:>), (:<|>)(..), serve)
 import Servant (errBody, err404, throwError)
-import System.Directory (getDirectoryContents, doesFileExist)
+import System.Directory (getDirectoryContents, doesFileExist, doesDirectoryExist)
 import System.FilePath.Posix (joinPath, (<.>), (</>), takeFileName)
 import System.Posix.Syslog (SyslogFn, SyslogConfig(..), Facility(..), Priority(..), PriorityMask(..))
 import System.Posix.Syslog (Option(..), withSyslog)
@@ -43,6 +43,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Typeable (Typeable)
 import qualified Network.HTTP.Media as M
 import Servant.API (Accept (..), MimeRender (..))
+import qualified Data.Text.Lazy.IO as T
 
 data HTML deriving Typeable
 
@@ -72,11 +73,6 @@ instance ToJSON IfoFile where
     ]
 
 
-data TrState = TrState {
-    tsLock         :: MVar ()
-  , tsDictionaries :: IORef (Map FilePath StarDict)
-  }
-
 data CategoryInfo = CategoryInfo {
       ciName       :: FilePath
     , ciDescription :: Maybe Text
@@ -87,6 +83,13 @@ instance ToJSON CategoryInfo where
       "name"        .= ciName
     , "description" .= ciDescription
     ]
+
+data TrState = TrState {
+    tsLock         :: MVar ()
+  , tsCategories   :: IORef (Map FilePath CategoryInfo)
+  , tsDictionaries :: IORef (Map FilePath StarDict)
+  }
+
 
 type DictionaryAPI = "categories" :> (
        Get '[JSON] [FilePath]
@@ -135,6 +138,31 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..})
                         <$> getDirectoryContents path
 
     withDictionary f path = liftIO (getDictionary path) >>= maybe (dictionaryNotFound path) f
+
+    getCategory :: FilePath -> IO (Maybe CategoryInfo)
+    getCategory name = bracket (takeMVar tsLock) (putMVar tsLock) $ \_ ->
+      readIORef tsCategories >>= maybe
+        (loadCategory)
+        (return . Just)
+        . Map.lookup name where
+
+      fullPath = tsDictionariesPath </> name
+
+      loadCategory :: IO (Maybe CategoryInfo)
+      loadCategory = doesDirectoryExist fullPath >>= \case
+        True -> do
+          let ciName = name
+          let readmeFile = fullPath </> tsReadmeFile
+          ciDescription <- doesFileExist readmeFile >>= \case
+            True  -> Just <$> T.readFile readmeFile
+            False -> return Nothing
+
+          return . Just $ CategoryInfo {..}
+
+        False -> return Nothing
+
+
+
 
     getDictionary :: FilePath -> IO (Maybe StarDict)
     getDictionary path = bracket (takeMVar tsLock) (putMVar tsLock) $ \_ ->
@@ -202,6 +230,7 @@ main = withSyslog SyslogConfig {
 
       state <- do
         tsLock         <- newMVar ()
+        tsCategories   <- newIORef Map.empty
         tsDictionaries <- newIORef Map.empty
         return TrState {..}
 

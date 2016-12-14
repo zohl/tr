@@ -16,6 +16,7 @@ import Data.Typeable (Typeable)
 
 data TrSettings = TrSettings {
     tsDictionariesPath :: FilePath
+  , tsReadmeFile       :: FilePath
   }
 
 data TrException = NoDictionariesPath

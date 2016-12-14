@@ -78,5 +78,6 @@ getSettings syslog = do
 
   return TrSettings {
       tsDictionariesPath = dictionariesPath'
+    , tsReadmeFile = ".readme"
     } where
 
