@@ -6,6 +6,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Main where
 
@@ -28,7 +29,7 @@ import Network.Wai.Handler.Warp.SocketActivation (withSocketActivation, SocketAc
 import Servant (Application, Server, Raw, JSON, Get, Capture, (:>), (:<|>)(..), serve)
 import Servant (errBody, err404, throwError)
 import System.Directory (getDirectoryContents)
-import System.FilePath.Posix (joinPath, (<.>))
+import System.FilePath.Posix (joinPath, (<.>), (</>), takeFileName)
 import System.Posix.Syslog (SyslogFn, SyslogConfig(..), Facility(..), Priority(..), PriorityMask(..))
 import System.Posix.Syslog (Option(..), withSyslog)
 import qualified Data.ByteString.Char8 as BSC8
@@ -75,47 +76,86 @@ data TrState = TrState {
   , tsDictionaries :: IORef (Map FilePath StarDict)
   }
 
+data CategoryInfo = CategoryInfo {
+      ciName       :: FilePath
+    , ciDescription :: Maybe Text
+  } deriving (Eq, Show)
 
-type DictionaryAPI = Get '[JSON] [FilePath]
-                :<|> Capture "name" FilePath :> Get '[JSON] IfoFile
-                :<|> Capture "name" FilePath :> Capture "word" Text :> Get '[JSON] [Text]
+instance ToJSON CategoryInfo where
+  toJSON (CategoryInfo {..}) = object [
+      "name"        .= ciName
+    , "description" .= ciDescription
+    ]
+
+type DictionaryAPI = "categories" :> (
+       Get '[JSON] [FilePath]
+       -- ^ list of categories
+  :<|> Capture "category" FilePath :> (
+            Get '[JSON] CategoryInfo
+            -- ^ category info
+       :<|> Capture "word" Text :> Get '[JSON] [Text]
+            -- ^ all translations of the word in the category
+       :<|> "dictionaries" :> (
+                 Get '[JSON] [FilePath]
+                 -- ^ list of all dictionaries in the category
+            :<|> Capture "dictionary" FilePath :> (
+                      Get '[JSON] IfoFile
+                      -- ^ dictionary info
+                 :<|> Capture "word" Text :> Get '[JSON] [Text]))))
+                      -- ^ translation of the word in the dictionary
+
 
 serveDictionaryAPI :: TrSettings -> TrState -> Server DictionaryAPI
-serveDictionaryAPI (TrSettings {..}) (TrState {..}) = serveDictionaryList
-                                                 :<|> serveDictionary
-                                                 :<|> serveTranslation where
+serveDictionaryAPI (TrSettings {..}) (TrState {..})
+     = serveCategoriesList
+  :<|> (\cat -> serveCategoryInfo cat
+           :<|> (serveTranslation cat Nothing)
+           :<|> (serveDictionariesList cat :<|> (\dict ->
+                     serveDictionaryInfo cat dict
+                :<|> (serveTranslation cat (Just dict))))) where
 
-  serveDictionaryList        = liftIO $ getDictionariesList
-  serveDictionary            = withDictionary (return . sdIfoFile)
-  serveTranslation name word = withDictionary (liftIO . getEntries word) name
+    serveCategoriesList = liftIO $ getDirectoryContents' tsDictionariesPath
+    serveCategoryInfo = undefined
 
-  getDictionariesList :: IO [FilePath]
-  getDictionariesList = filter (not . flip elem [".", ".."])
-                    <$> getDirectoryContents tsDictionariesPath
+    serveDictionariesList cat = liftIO $ getDirectoryContents' (tsDictionariesPath </> cat)
 
-  getDictionary :: FilePath -> IO (Maybe StarDict)
-  getDictionary name = bracket (takeMVar tsLock) (putMVar tsLock) $ \_ ->
-    readIORef tsDictionaries >>= maybe
-    (loadDictionary)
-    (return . Just)
-    . Map.lookup name where
+    serveDictionaryInfo cat dict = withDictionary
+      (return . sdIfoFile)
+      (tsDictionariesPath </> cat </> dict)
 
-    loadDictionary :: IO (Maybe StarDict)
-    loadDictionary = getDictionariesList >>= \dsl -> case (name `elem` dsl) of
-      True -> do
-        d <- StarDict.mkDictionary (joinPath [tsDictionariesPath, name, name <.> ".ifo"]) render
-        modifyIORef' tsDictionaries (Map.insert name d)
-        return $ Just d
-      False -> return Nothing
+    serveTranslation cat (Just dict) word = withDictionary
+      (liftIO . getEntries word)
+      (tsDictionariesPath </> cat </> dict)
 
-  dictionaryNotFound _name = throwError err404 { errBody = "Dictionary not found" }
+    serveTranslation cat Nothing word = undefined
 
-  withDictionary f name = liftIO (getDictionary name) >>= maybe (dictionaryNotFound name) f
+    getDirectoryContents' path = filter (\s -> (not . null $ s) && (head s /= '.'))
+                        <$> getDirectoryContents path
+
+    withDictionary f path = liftIO (getDictionary path) >>= maybe (dictionaryNotFound path) f
+
+    getDictionary :: FilePath -> IO (Maybe StarDict)
+    getDictionary path = bracket (takeMVar tsLock) (putMVar tsLock) $ \_ ->
+      readIORef tsDictionaries >>= maybe
+      (loadDictionary)
+      (return . Just)
+      . Map.lookup path where
+
+      loadDictionary :: IO (Maybe StarDict)
+      loadDictionary = getDictionariesList >>= \dsl -> case (path `elem` dsl) of
+        True -> do
+          d <- StarDict.mkDictionary (path </> (takeFileName path) <.> ".ifo") render
+          modifyIORef' tsDictionaries (Map.insert path d)
+          return $ Just d
+        False -> return Nothing
+
+    dictionaryNotFound _path = throwError err404 { errBody = "Dictionary not found" }
+
 
 
 type TrAPI = Get '[HTML] BSL.ByteString
         :<|> "static" :> Raw
-        :<|> "api" :> "dictionary" :> DictionaryAPI
+        :<|> "api" :> DictionaryAPI
 
 server :: TrSettings -> TrState -> BSL.ByteString -> Server TrAPI
 server settings state indexPage
