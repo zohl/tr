@@ -191,7 +191,7 @@ type TrAPI = Get '[HTML] BSL.ByteString
 server :: TrSettings -> TrState -> BSL.ByteString -> Server TrAPI
 server settings state indexPage
      = return indexPage
-  :<|> serveDirectory "frontend/static"
+  :<|> serveDirectory "frontend2/static"
   :<|> serveDictionaryAPI settings state where
 
 app :: TrSettings -> TrState -> BSL.ByteString -> Application
@@ -234,7 +234,7 @@ main = withSyslog SyslogConfig {
         tsDictionaries <- newIORef Map.empty
         return TrState {..}
 
-      indexPage <- BSL.readFile "frontend/static/index.html"
+      indexPage <- BSL.readFile "frontend2/static/index.html"
 
       withSocketActivation saSettings $
         \sock -> withAutoQuit aqSettings $
