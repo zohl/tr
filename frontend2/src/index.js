@@ -1,25 +1,19 @@
-// inferno module
 import Inferno from 'inferno';
 
-// routing modules
-import { Router, Route } from 'inferno-router';
-import createBrowserHistory from 'history/createBrowserHistory';
-
-// app components
 import app from './app';
 
-// import VersionComponent from './VersionComponent';
+const render = node => Inferno.render(node, document.getElementById('app'));
 
-const browserHistory = createBrowserHistory();
-// component={ VersionComponent } 
+const start = (init, view, update) => {
+  var state = {};
 
-const routes = (
-  <Router history={browserHistory}>
-    <Route component={app}>
-    </Route>
-  </Router>
-);
+  const dispatch = action => {
+    update(action, state);
+    render(view(dispatch, state));
+  }
 
-      // <Route path="/" />
-Inferno.render(routes, document.getElementById('app'));
+  init(dispatch);
+}
+
+start(app.init, app.view, app.update);
 

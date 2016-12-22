@@ -74,7 +74,7 @@ instance ToJSON IfoFile where
 
 
 data CategoryInfo = CategoryInfo {
-      ciName       :: FilePath
+      ciName        :: FilePath
     , ciDescription :: Maybe Text
   } deriving (Eq, Show)
 
@@ -119,7 +119,9 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..})
           :<|> (serveTranslation cat Nothing)) where
 
     serveCategoriesList = liftIO $ getDirectoryContents' tsDictionariesPath
-    serveCategoryInfo = undefined
+    serveCategoryInfo name = liftIO $ getCategory name >>= maybe
+      (return $ CategoryInfo {ciName = name, ciDescription = Nothing})
+      (return)
 
     serveDictionariesList cat = liftIO $ getDirectoryContents' (tsDictionariesPath </> cat)
 
@@ -160,8 +162,6 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..})
           return . Just $ CategoryInfo {..}
 
         False -> return Nothing
-
-
 
 
     getDictionary :: FilePath -> IO (Maybe StarDict)
