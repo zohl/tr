@@ -2,7 +2,18 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-  entry: './src/index.js'
+  entry: {
+    app: './src/index.js'
+  , vendor: ['inferno']
+  }
+, output: {
+    filename: '[name].js'
+  , path: './static'
+  , publicPath: '/static'
+  }
+, resolve: {
+    extensions: ['.js']
+  }
 , devtool: 'sourcemap'
 , plugins: [
     new HtmlWebpackPlugin({
@@ -20,12 +31,8 @@ module.exports = {
         'NODE_ENV': JSON.stringify('production')
       }
     })
+  , new webpack.optimize.CommonsChunkPlugin('vendor')
   ]
-, output: {
-    filename: 'bundle.js'
-  , path: './static'
-  , publicPath: '/static'
-  }
 , module: {
     rules: [{
         test: /\.js$/

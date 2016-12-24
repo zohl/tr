@@ -4,8 +4,9 @@
   "description": "frontend for tr server",
   "main": "src/index.js",
   "scripts": {
-    "build": "webpack --config ./webpack.conf.js",
-    "size": "webpack --config ./webpack.conf.js --json | webpack-bundle-size-analyzer"
+    "build": "webpack --config ./webpack.conf.js --progress --colors"
+  , "build-style": "lessc ./src/style.less ./static/style.css"
+  , "size": "webpack --config ./webpack.conf.js --json | webpack-bundle-size-analyzer"
   },
   "license": "MIT",
   "devDependencies": {
@@ -16,7 +17,13 @@
     "babel-plugin-syntax-jsx": "^6.3.13",
     "babel-preset-es2015": "^6.3.13",
     "babel-preset-stage-0": "^6.3.13",
+    "css-loader": "^0.26.1",
+    "extract-text-webpack-plugin": "^2.0.0-beta.4",
+    "file-loader": "^0.9.0",
     "html-webpack-plugin": "^2.24.1",
+    "less": "^2.7.1",
+    "less-loader": "^2.2.3",
+    "style-loader": "^0.13.1",
     "webpack": "2.2.0-rc.1",
     "webpack-bundle-size-analyzer": "^2.2.0"
   },
