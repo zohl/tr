@@ -1,25 +1,22 @@
 import Inferno from 'inferno';
 import Component from 'inferno-component';
 
-import {compose, update, getJSON} from './common';
-import category from './category';
+import {compose, getJSON} from './common';
+import {category, setCurrentCategory} from './category';
 
 // import Dictionary from './dictionary';
 // import Translation from './translation';
 
-const actions = {
-  modifyState: f => state => f(state)
-, updateQuery: e => state => {state.query = e.target.value;}
-};
-
+const updateQuery = e => (state, dispatch) => {
+  state.query = e.target.value;
+}
 
 const init = (dispatch) => {
 
-  var cb = compose(dispatch, actions.modifyState);
+  var cb = compose(dispatch, f => (state, _) => f(state));
  
   cb(state => {
     state.query = "";
-    state.categories = undefined;
   });
 
   getJSON('/api/categories', data => {
@@ -35,27 +32,35 @@ const init = (dispatch) => {
             name: info.name
           , description: info.description 
           });
+
+          if (undefined === state.category) {
+            dispatch(setCurrentCategory(info.name));
+          }
         });
+        
       });
     });
-
   });
-};
+}
 
 
-const view = (dispatch, state) => (
+const view = (state, dispatch) => (
   <div className = "container">
     <form className = "search">
       <input type = "input"
              placeholder = "_"
-             onInput = {compose(dispatch, actions.updateQuery)}/>
+             onInput = {compose(dispatch, updateQuery)}/>
 
       <div className = "categories">
-        {(!state.categories) ? "**LOADING**" : (state.categories.map(category))}
+        {(!state.categories)
+         ? "**LOADING**"
+         : state.categories.map(category(state, dispatch))}
       </div>
+
     </form>
   </div>
 );
 
 
-export default {init, view, update};
+export default {init, view};
+

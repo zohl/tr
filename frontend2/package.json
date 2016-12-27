@@ -4,8 +4,7 @@
   "description": "frontend for tr server",
   "main": "src/index.js",
   "scripts": {
-    "build": "webpack --config ./webpack.conf.js --progress --colors"
-  , "build-style": "lessc ./src/style.less ./static/style.css"
+    "build": "lessc ./src/style.less ./static/style.css && webpack --config ./webpack.conf.js --progress --colors"
   , "size": "webpack --config ./webpack.conf.js --json | webpack-bundle-size-analyzer"
   },
   "license": "MIT",

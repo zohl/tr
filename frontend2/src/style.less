@@ -1,2 +1,97 @@
+// snippets
+.toggler(@content-off, @content-on) {
+  input {
+    display: none;
+    &:checked + .widget::before {
+      content: @content-on;
+    }
+  }
+
+  .widget{
+    &::before {
+      content: @content-off;
+    }
+  }
+}
+
+.checkbox {
+  .toggler('[ ]'; '[X]');
+  .widget::before {
+    display: block;
+    float: left;
+    margin-right: 1ch;
+  }
+}
+
+.radiobutton {
+  .toggler('( )'; '(*)');
+  .widget::before {
+    display: block;
+    float: left;
+    margin-right: 1ch;
+  }
+}
+
+
+// structure
+p {
+  margin: 0;
+  padding: 0;
+}
+
+app {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.container {
+  width: 80ch;
+  margin: auto;
+}
+
+.search {
+  display: block;
+  text-align: center;
+  padding-top: 2em;
+  padding-bottom: 3em;
+
+  input {
+    width: 40ch;
+  }
+}
+
+
+.categories {
+
+  .category {
+    .radiobutton;
+  }
+}
+
+
+// appearance
+
+@body-bg: #FFFFFF;
+@body-fg: #000000;
+
+@widget-bg: #D8D8D8;
+@widget-fg: #222222;
+
+@popup-bg: #EEEEEE;
+@popup-fg: #222222;
+
+body {
+  background: @body-bg;
+  color: @body-fg;
+  font-family: monospace;
+}
+
+input, .dictionary {
+  background: @widget-bg;
+  color: @widget-fg;
+  border: 0px;
+  font-family: monospace;
+}
 
 
