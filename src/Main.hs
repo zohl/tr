@@ -11,6 +11,7 @@
 
 module Main where
 
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
 import Control.Exception.Base (bracket)
 import Control.Monad.IO.Class (liftIO)
@@ -108,6 +109,9 @@ type DictionaryAPI = "categories" :> (
        :<|> Capture "word" Text :> Get '[JSON] [Text]))
             -- ^ all translations of the word in the category
 
+-- TODO remove
+delay :: IO ()
+delay = threadDelay 2000000
 
 serveDictionaryAPI :: TrSettings -> TrState -> Server DictionaryAPI
 serveDictionaryAPI (TrSettings {..}) (TrState {..})
@@ -118,12 +122,12 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..})
               :<|> (serveTranslation cat (Just dict))))
           :<|> (serveTranslation cat Nothing)) where
 
-    serveCategoriesList = liftIO $ getDirectoryContents' tsDictionariesPath
-    serveCategoryInfo name = liftIO $ getCategory name >>= maybe
+    serveCategoriesList = liftIO $ delay >> getDirectoryContents' tsDictionariesPath
+    serveCategoryInfo name = liftIO $ delay >> getCategory name >>= maybe
       (return $ CategoryInfo {ciName = name, ciDescription = Nothing})
       (return)
 
-    serveDictionariesList cat = liftIO $ getDirectoryContents' (tsDictionariesPath </> cat)
+    serveDictionariesList cat = liftIO $ delay >> getDirectoryContents' (tsDictionariesPath </> cat)
 
     serveDictionaryInfo cat dict = withDictionary
       (return . sdIfoFile)
@@ -139,7 +143,7 @@ serveDictionaryAPI (TrSettings {..}) (TrState {..})
     getDirectoryContents' path = filter (\s -> (not . null $ s) && (head s /= '.'))
                         <$> getDirectoryContents path
 
-    withDictionary f path = liftIO (getDictionary path) >>= maybe (dictionaryNotFound path) f
+    withDictionary f path = liftIO (delay >> getDictionary path) >>= maybe (dictionaryNotFound path) f
 
     getCategory :: FilePath -> IO (Maybe CategoryInfo)
     getCategory name = bracket (takeMVar tsLock) (putMVar tsLock) $ \_ ->

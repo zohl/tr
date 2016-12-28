@@ -1,5 +1,35 @@
 import Inferno from 'inferno';
-import {compose, getJSON} from './common';
+import {compose, getJSON, modifyState} from './common';
+import spinner from './spinner';
+
+
+const loadCategory = name => (state, dispatch) => {
+
+  if (undefined === state.categories) {
+    state.categories = [];
+  }
+
+  var cIndex = state.categories.length;
+
+  state.categories.push({
+    name: name
+  , loaded: false
+  });
+
+  var cb = compose(dispatch, modifyState);
+
+  getJSON(`/api/categories/${name}`, info => cb(state => {
+    state.categories[cIndex] = Object.assign({}, info, {
+      loaded: true
+    , dictsLoaded: false
+    });
+
+    if (undefined === state.category) {
+      dispatch(setCurrentCategory(info.name));
+    }
+  }));
+}
+
 
 const setCurrentCategory = name => (state, dispatch) => {
 
@@ -9,19 +39,17 @@ const setCurrentCategory = name => (state, dispatch) => {
   }
 
   state.category = name;
-  if (state.categories[cIndex].loaded) {
+  if (state.categories[cIndex].dictsLoaded) {
     return;
   }  
 
-  var cb = compose(dispatch, f => (state, _) => f(state));
-
   if (undefined === state.dictionaries) {
-    cb(state => {
-      state.dictionaries = [];
-    });
+    state.dictionaries = [];
   }
  
-  getJSON(`/api/categories/${name}/dictionaries`, data => data.forEach(dname => 
+  var cb = compose(dispatch, modifyState);
+
+  getJSON(`/api/categories/${name}/dictionaries`, data => data.forEach(dname => {
     getJSON(`/api/categories/${name}/dictionaries/${dname}`, info => {
       cb(state => {
         state.dictionaries.push(Object.assign({}, info, {
@@ -32,10 +60,12 @@ const setCurrentCategory = name => (state, dispatch) => {
 
         state.categories[cIndex].loaded = true;
       });
-    })));
+    })
+  }));
 }
 
-const category = (state, dispatch) => c => (
+
+const category = (state, dispatch) => c => (!c.loaded) ? spinner("category"): (
   <label className = "category">
     <input type = "checkbox"
            name = "category"
@@ -51,5 +81,5 @@ const category = (state, dispatch) => c => (
   </label>
 );
 
-export {category, setCurrentCategory};
+export {category, setCurrentCategory, loadCategory};
 

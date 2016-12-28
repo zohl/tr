@@ -2,17 +2,19 @@ import Inferno from 'inferno';
 
 import app from './app';
 
-const render = node => Inferno.render(node, document.getElementById('app'));
-
 const start = (init, view) => {
   var state = {};
+  var root = document.getElementById('app');
+
+  const render = () => Inferno.render(view(state, dispatch), root);
 
   const dispatch = action => {
     action(state, dispatch);
-    render(view(state, dispatch));
+    render();
   }
 
-  init(dispatch);
+  init(state, dispatch);
+  render();
 }
 
 start(app.init, app.view);

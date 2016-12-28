@@ -7,7 +7,16 @@ const toggleDictionary = name => (state, dispatch) => {
     return;
   }
 
-  state.dictionaries[dIndex].enabled = !state.dictionaries[dIndex].enabled;
+  var enabled = !state.dictionaries[dIndex].enabled;
+  state.dictionaries[dIndex].enabled = enabled;
+
+  if (!enabled) {
+    return;
+  }
+
+  if (undefined === state.translations) {
+    state.translations = [];
+  }
 }
 
 

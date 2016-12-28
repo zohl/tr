@@ -33,6 +33,29 @@
 }
 
 
+@keyframes spin { from {left: 0ch} to {left: -4ch} }
+
+.loading {
+  .container {
+    display: inline-block;
+    width: 1ch;
+    overflow: hidden;
+  
+    .spinner {
+      position: relative;
+      left: 1ch;
+      width: 1ch;
+      animation: spin 0.25s steps(4) infinite;
+      animation-delay: 0.5s;
+
+      &::after {
+        content: '\\-/|';
+      }
+    }
+  }
+}
+
+
 // structure
 p {
   margin: 0;
@@ -63,11 +86,16 @@ app {
 
 
 .categories {
+
+  .loading {
+    text-align: left;
+  }
+
   .category {
     .radiobutton;
     .contents {
        text-align: left;
-     }
+    }
   }
 }
 
