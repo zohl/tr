@@ -3,8 +3,8 @@ import Component from 'inferno-component';
 
 import {compose, getJSON} from './common';
 import {category, setCurrentCategory} from './category';
+import {dictionary} from './dictionary';
 
-// import Dictionary from './dictionary';
 // import Translation from './translation';
 
 const updateQuery = e => (state, dispatch) => {
@@ -28,10 +28,7 @@ const init = (dispatch) => {
     data.forEach(name => {
       getJSON(`/api/categories/${name}`, info => {
         cb(state => {
-          state.categories.push({
-            name: info.name
-          , description: info.description 
-          });
+          state.categories.push(Object.assign({}, info, {loaded: false}));
 
           if (undefined === state.category) {
             dispatch(setCurrentCategory(info.name));
@@ -57,6 +54,13 @@ const view = (state, dispatch) => (
          : state.categories.map(category(state, dispatch))}
       </div>
 
+      <div className = "dictionaries">
+        {(!state.dictionaries)
+         ? null
+         : state.dictionaries
+           .filter(d => d.category == state.category)
+           .map(dictionary(state, dispatch))}
+      </div>
     </form>
   </div>
 );
