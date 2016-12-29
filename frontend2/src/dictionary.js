@@ -1,5 +1,37 @@
 import Inferno from 'inferno';
-import {compose} from './common';
+import {compose, modifyState, getJSON} from './common';
+import spinner from './spinner';
+
+
+const loadDictionaries = cname => (state, dispatch) => {
+  if (undefined === state.dictionaries) {
+    state.dictionaries = [];
+  }
+ 
+  getJSON(`/api/categories/${cname}/dictionaries`, data =>
+    data.forEach(compose(dispatch, loadDictionary(cname))));
+};
+
+
+const loadDictionary = cname => dname => (state, dispatch) => {
+  var dIndex = state.dictionaries.length;
+
+  state.dictionaries.push({
+    name: dname
+  , loaded: false    
+  , category: cname
+  });
+
+  var cb = compose(dispatch, modifyState);
+
+  getJSON(`/api/categories/${cname}/dictionaries/${dname}`, info => cb(state => 
+    Object.assign(state.dictionaries[dIndex], info, {
+      loaded: true
+    , enabled: false
+    })
+  ));
+};
+
 
 const toggleDictionary = name => (state, dispatch) => {
   var dIndex = state.dictionaries.findIndex(dictionary => dictionary.name == name);
@@ -20,19 +52,19 @@ const toggleDictionary = name => (state, dispatch) => {
 }
 
 
-const dictionary = (state, dispatch) => d => (
-  <label className = "dictionary">
+const dictionary = (state, dispatch) => d => (!d.loaded) ? spinner('dictionary'): (
+  <label class = "dictionary">
     <input type = "checkbox"
            name = {d.name}
            checked = {d.enabled}
            onInput = {compose(dispatch, toggleDictionary, e => e.target.name)}
     />
-    <div className = "widget"/>
-    <div className = "contents">
+    <div class = "widget"/>
+    <div class = "contents">
       <p>{d.name}</p>
     </div>
   </label>
 );
 
-export {dictionary, toggleDictionary};
+export {dictionary, toggleDictionary, loadDictionary, loadDictionaries};
 

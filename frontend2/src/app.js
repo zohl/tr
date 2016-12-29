@@ -25,19 +25,24 @@ const view = (state, dispatch) => (
              placeholder = "_"
              onInput = {compose(dispatch, updateQuery)}/>
 
-      {(undefined === state.categories) ? spinner("categories"): (
+      {(undefined === state.categories) ? spinner('categories'): (
         <div class = "categories">
           {state.categories.map(category(state, dispatch))}
         </div>
       )}
 
-      <div className = "dictionaries">
-        {(undefined === state.dictionaries)
-         ? null
-         : state.dictionaries
-           .filter(d => d.category == state.category)
-           .map(dictionary(state, dispatch))}
-      </div>
+      {(undefined == state.dictionaries)
+       ? '' 
+       : (!state.dictionaries.filter(d => d.category == state.category).length)
+         ? spinner('dictionaries')
+         : (
+           <div class = "dictionaries">
+            {state.dictionaries
+             .filter(d => d.category == state.category)
+             .map(dictionary(state, dispatch))}
+           </div>
+      )}
+
     </form>
   </div>
 );

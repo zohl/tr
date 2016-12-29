@@ -1,6 +1,7 @@
 import Inferno from 'inferno';
 import {compose, getJSON, modifyState} from './common';
 import spinner from './spinner';
+import {loadDictionaries} from './dictionary';
 
 
 const loadCategory = name => (state, dispatch) => {
@@ -19,7 +20,7 @@ const loadCategory = name => (state, dispatch) => {
   var cb = compose(dispatch, modifyState);
 
   getJSON(`/api/categories/${name}`, info => cb(state => {
-    state.categories[cIndex] = Object.assign({}, info, {
+    Object.assign(state.categories[cIndex], info, {
       loaded: true
     , dictsLoaded: false
     });
@@ -43,38 +44,21 @@ const setCurrentCategory = name => (state, dispatch) => {
     return;
   }  
 
-  if (undefined === state.dictionaries) {
-    state.dictionaries = [];
-  }
- 
-  var cb = compose(dispatch, modifyState);
-
-  getJSON(`/api/categories/${name}/dictionaries`, data => data.forEach(dname => {
-    getJSON(`/api/categories/${name}/dictionaries/${dname}`, info => {
-      cb(state => {
-        state.dictionaries.push(Object.assign({}, info, {
-          name: dname
-        , enabled: false
-        , category: name
-        }));
-
-        state.categories[cIndex].loaded = true;
-      });
-    })
-  }));
+  state.categories[cIndex].dictsLoaded = true;
+  dispatch(loadDictionaries(name));
 }
 
 
 const category = (state, dispatch) => c => (!c.loaded) ? spinner("category"): (
-  <label className = "category">
+  <label class = "category">
     <input type = "checkbox"
            name = "category"
            value = {c.name}
            checked = {state.category == c.name}
            onInput = {compose(dispatch, setCurrentCategory, e => e.target.value)}
     />
-    <div className = "widget"/>
-    <div className = "contents">
+    <div class = "widget"/>
+    <div class = "contents">
       <p>{c.name}</p>
       <p>{c.description}</p>
     </div>
