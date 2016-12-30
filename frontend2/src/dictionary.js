@@ -7,7 +7,7 @@ const loadDictionaries = cname => (state, dispatch) => {
   if (undefined === state.dictionaries) {
     state.dictionaries = [];
   }
- 
+
   getJSON(`/api/categories/${cname}/dictionaries`, data =>
     data.forEach(compose(dispatch, loadDictionary(cname))));
 };
@@ -18,13 +18,13 @@ const loadDictionary = cname => dname => (state, dispatch) => {
 
   state.dictionaries.push({
     name: dname
-  , loaded: false    
+  , loaded: false
   , category: cname
   });
 
   var cb = compose(dispatch, modifyState);
 
-  getJSON(`/api/categories/${cname}/dictionaries/${dname}`, info => cb(state => 
+  getJSON(`/api/categories/${cname}/dictionaries/${dname}`, info => cb(state =>
     Object.assign(state.dictionaries[dIndex], info, {
       loaded: true
     , enabled: false

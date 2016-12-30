@@ -32,7 +32,7 @@ const view = (state, dispatch) => (
       )}
 
       {(undefined == state.dictionaries)
-       ? '' 
+       ? ''
        : (!state.dictionaries.filter(d => d.category == state.category).length)
          ? spinner('dictionaries')
          : (

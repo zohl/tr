@@ -42,7 +42,7 @@ const setCurrentCategory = name => (state, dispatch) => {
   state.category = name;
   if (state.categories[cIndex].dictsLoaded) {
     return;
-  }  
+  }
 
   state.categories[cIndex].dictsLoaded = true;
   dispatch(loadDictionaries(name));
