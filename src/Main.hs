@@ -111,7 +111,7 @@ type DictionaryAPI = "categories" :> (
 
 -- TODO remove
 delay :: IO ()
-delay = threadDelay 2000000
+delay = threadDelay 1000000
 
 serveDictionaryAPI :: TrSettings -> TrState -> Server DictionaryAPI
 serveDictionaryAPI (TrSettings {..}) (TrState {..})

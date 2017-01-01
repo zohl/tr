@@ -3,16 +3,6 @@ import {compose, modifyState, getJSON} from './common';
 import spinner from './spinner';
 
 
-const loadDictionaries = cname => (state, dispatch) => {
-  if (undefined === state.dictionaries) {
-    state.dictionaries = [];
-  }
-
-  getJSON(`/api/categories/${cname}/dictionaries`, data =>
-    data.forEach(compose(dispatch, loadDictionary(cname))));
-};
-
-
 const loadDictionary = cname => dname => (state, dispatch) => {
   var dIndex = state.dictionaries.length;
 
@@ -30,7 +20,17 @@ const loadDictionary = cname => dname => (state, dispatch) => {
     , enabled: false
     })
   ));
-};
+}
+
+
+const loadDictionaries = cname => (state, dispatch) => {
+  if (undefined === state.dictionaries) {
+    state.dictionaries = [];
+  }
+
+  getJSON(`/api/categories/${cname}/dictionaries`, data =>
+    data.forEach(compose(dispatch, loadDictionary(cname))));
+}
 
 
 const toggleDictionary = name => (state, dispatch) => {
@@ -52,7 +52,7 @@ const toggleDictionary = name => (state, dispatch) => {
 }
 
 
-const dictionary = (state, dispatch) => d => (!d.loaded) ? spinner('dictionary'): (
+const renderDictionary = (state, dispatch) => d => (!d.loaded) ? spinner('dictionary'): (
   <label class = "dictionary">
     <input type = "checkbox"
            name = {d.name}
@@ -64,7 +64,18 @@ const dictionary = (state, dispatch) => d => (!d.loaded) ? spinner('dictionary')
       <p>{d.name}</p>
     </div>
   </label>
-);
+)
 
-export {dictionary, toggleDictionary, loadDictionary, loadDictionaries};
+const renderDictionaries = (state, dispatch) => (undefined == state.dictionaries)
+  ? ''
+  : (!state.dictionaries.filter(d => d.category == state.category).length)
+    ? spinner('dictionaries')
+    : (
+      <div class = "dictionaries">
+       {state.dictionaries
+        .filter(d => d.category == state.category)
+        .map(renderDictionary(state, dispatch))}
+      </div>
+    );
 
+export {loadDictionary, loadDictionaries, toggleDictionary, renderDictionary, renderDictionaries};

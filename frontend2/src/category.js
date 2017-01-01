@@ -32,6 +32,10 @@ const loadCategory = name => (state, dispatch) => {
 }
 
 
+const loadCategories = (state, dispatch) =>
+  getJSON('/api/categories', data => data.forEach(compose(dispatch, loadCategory)));
+
+
 const setCurrentCategory = name => (state, dispatch) => {
 
   var cIndex = state.categories.findIndex(category => category.name == name);
@@ -49,7 +53,7 @@ const setCurrentCategory = name => (state, dispatch) => {
 }
 
 
-const category = (state, dispatch) => c => (!c.loaded) ? spinner("category"): (
+const renderCategory = (state, dispatch) => c => (!c.loaded) ? spinner("category"): (
   <label class = "category">
     <input type = "checkbox"
            name = "category"
@@ -65,5 +69,14 @@ const category = (state, dispatch) => c => (!c.loaded) ? spinner("category"): (
   </label>
 );
 
-export {category, setCurrentCategory, loadCategory};
+
+const renderCategories = (state, dispatch) =>
+  (undefined === state.categories) ? spinner('categories'): (
+     <div class = "categories">
+        {state.categories.map(renderCategory(state, dispatch))}
+     </div>
+  );
+
+
+export {loadCategory, loadCategories, setCurrentCategory, renderCategory, renderCategories};
 
