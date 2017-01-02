@@ -2,6 +2,7 @@ import Inferno from 'inferno';
 import Component from 'inferno-component';
 
 import {compose, getJSON, modifyState} from './common';
+import {initDebug, renderDebug} from './debug';
 import {loadCategories, renderCategories} from './category';
 import {renderDictionaries} from './dictionary';
 import {loadTranslations, renderTranslations} from './translation';
@@ -16,6 +17,7 @@ const updateQuery = query => (state, dispatch) => {
 
 const init = (state, dispatch) => {
   state.query = "";
+  dispatch(initDebug());
   dispatch(loadCategories);
 }
 

@@ -1,5 +1,5 @@
 // snippets
-.toggler(@content-off, @content-on) {
+.custom-input(@content-off, @content-on) {
   input {
     display: none;
     &:checked + .widget::before {
@@ -10,25 +10,25 @@
   .widget{
     &::before {
       content: @content-off;
+      display: block;
+      float: left;
+      margin-right: 1ch;
     }
   }
 }
 
 .checkbox {
-  .toggler('[ ]'; '[X]');
-  .widget::before {
-    display: block;
-    float: left;
-    margin-right: 1ch;
-  }
+  .custom-input('[ ]'; '[X]');
 }
 
 .radiobutton {
-  .toggler('( )'; '(*)');
-  .widget::before {
-    display: block;
-    float: left;
-    margin-right: 1ch;
+  .custom-input('( )'; '(*)');
+}
+
+.toggler {
+    .custom-input('(+)'; '(-)');
+  input:not(:checked) ~ .contents {
+    display: none;
   }
 }
 
@@ -82,6 +82,42 @@ app {
   input {
     width: 40ch;
   }
+}
+
+.debug {
+    position: fixed;
+    top: 0px;
+    right: 0px;
+    width: 80ch;
+    background: #000;
+    color: #FFF;
+    opacity: 0.5;
+
+    overflow: hidden;
+
+    .string {
+        max-height: 1em;
+        white-space: nowrap;
+
+        &::before, &::after {
+           content: '"';
+        }
+    }
+
+    .field {
+        padding-left: 4ch;
+    }
+
+    .object {
+        .toggler;
+        .contents {
+            padding-left: 2ch;
+        }
+
+        & > .field {
+            padding-left: 0ch;
+        }
+    }
 }
 
 
