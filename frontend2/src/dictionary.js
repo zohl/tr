@@ -45,10 +45,6 @@ const toggleDictionary = name => (state, dispatch) => {
   if (!enabled) {
     return;
   }
-
-  if (undefined === state.translations) {
-    state.translations = [];
-  }
 }
 
 

@@ -4,7 +4,6 @@ import spinner from './spinner';
 
 
 const loadTranslation = (cname, query) => dname => (state, dispatch) => {
-
   var prevTrans = state.translations[cname][dname];
   var order = prevTrans ? prevTrans.order + 1 : 0;
 
@@ -16,7 +15,7 @@ const loadTranslation = (cname, query) => dname => (state, dispatch) => {
     };
     return;
   }
-  
+
   state.translations[cname][dname] = {
     loaded: false
   , order: order
@@ -51,7 +50,6 @@ const loadTranslations = (cname, query) => (state, dispatch) => {
 
 const renderTranslation = (state, dispatch) => dname => {
   var translation = state.translations[state.category][dname];
-
   return (undefined === translation)
     ? null
     : (!translation.loaded)
@@ -60,11 +58,13 @@ const renderTranslation = (state, dispatch) => dname => {
         <div class = "translation">
           <p>{dname}</p>
           <div class = "entries">
-            {translation.entries.map(entry => (
-              <div class = "entry">
-                {entry}
-              </div>
-            ))}
+            {(!translation.entries.length)
+             ? 'N/A'
+             : translation.entries.map(entry => (
+                <div class = "entry">
+                  {entry}
+                </div>
+             ))}
           </div>
         </div>
       );
@@ -78,8 +78,9 @@ const renderTranslations = (state, dispatch) =>
     <div class = "translations">
       {state.dictionaries
        .filter(d => d.category == state.category && d.loaded && d.enabled)
-       .map(renderTranslation(state, dispatch))} 
+       .map(compose(renderTranslation(state, dispatch), d => d.name))}
     </div>
   );
+
 
 export {loadTranslation, loadTranslations, renderTranslation, renderTranslations};

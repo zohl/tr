@@ -26,11 +26,11 @@ const view = (state, dispatch) => (
       <input type = "input"
              placeholder = "_"
              onInput = {compose(dispatch, updateQuery, e => e.target.value)}/>
-
-      {renderCategories(state, dispatch)}
-      {renderDictionaries(state, dispatch)}
-      {renderTranslations(state, dispatch)}
     </form>
+    {renderCategories(state, dispatch)}
+    {renderDictionaries(state, dispatch)}
+    {renderTranslations(state, dispatch)}
+    {renderDebug(state, dispatch)}
   </div>
 );
 
